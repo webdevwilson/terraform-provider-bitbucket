@@ -12,7 +12,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 package main
 
 import (
-	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/plugin"
 	"github.com/hashicorp/terraform/terraform"
@@ -30,7 +29,7 @@ func Provider() terraform.ResourceProvider {
 	return &schema.Provider{ // Source https://github.com/hashicorp/terraform/blob/v0.6.6/helper/schema/provider.go#L20-L43
 		Schema: providerSchema(),
 		ResourcesMap: map[string]*schema.Resource{
-			"group": resources.GroupResource(),
+			"group": GroupResource(),
 		},
 		ConfigureFunc: providerConfigure,
 	}
@@ -61,7 +60,7 @@ func providerSchema() map[string]*schema.Schema {
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	username := d.Get("username").(string)
 	password := d.Get("password").(string)
-	client := client.New(username, password)
+	client := NewClient(username, password)
 	return &client, nil
 }
 

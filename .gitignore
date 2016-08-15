@@ -1,3 +1,4 @@
+terraform-provider-bitbucket
 terraform.tfvars
 bin
 pkg

@@ -1,4 +1,4 @@
-package client
+package main
 
 // Client struct for bitbucket http client
 type Client struct {
@@ -6,8 +6,8 @@ type Client struct {
 	password string
 }
 
-// New creates a new bitbucket http client
-func New(username string, password string) *Client {
+// NewClient creates a new bitbucket http client
+func NewClient(username string, password string) *Client {
 	return &Client{username, password}
 }
 
