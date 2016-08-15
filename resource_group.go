@@ -18,7 +18,8 @@ func GroupResource() *schema.Resource {
 			},
 			"permission": &schema.Schema{
 				Type:        schema.TypeString,
-				Required:    true,
+				Required:    false,
+				Default:     "read",
 				Description: "read, write, or admin",
 			},
 			"auto_add": &schema.Schema{
