@@ -18,13 +18,13 @@ func GroupResource() *schema.Resource {
 			},
 			"permission": &schema.Schema{
 				Type:        schema.TypeString,
-				Required:    false,
+				Optional:    true,
 				Default:     "read",
 				Description: "read, write, or admin",
 			},
 			"auto_add": &schema.Schema{
 				Type:        schema.TypeBool,
-				Required:    false,
+				Optional:    true,
 				Default:     false,
 				Description: "Should all new users be added to this group?",
 			},
