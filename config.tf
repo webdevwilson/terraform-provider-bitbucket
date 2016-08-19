@@ -10,5 +10,11 @@ provider "bitbucket" {
 
 # the minimum we need to create a group
 resource "bitbucket_group" "minimal" {
-  name = "tf_provider_readonly"
+  name                      = "tf_provider_readonly"
+  owner                     = "self"
+  permission                = "read"
+  auto_add                  = false
+  email_forwarding_disabled = false
+
+  /*members = ["${var.username}"]*/
 }

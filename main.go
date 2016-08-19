@@ -15,6 +15,8 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/plugin"
 	"github.com/hashicorp/terraform/terraform"
+	"github.com/webdevwilson/go-bitbucket/bitbucket"
+	"github.com/webdevwilson/terraform-provider-bitbucket/resources"
 )
 
 func main() {
@@ -29,7 +31,7 @@ func Provider() terraform.ResourceProvider {
 	return &schema.Provider{ // Source https://github.com/hashicorp/terraform/blob/v0.6.6/helper/schema/provider.go#L20-L43
 		Schema: providerSchema(),
 		ResourcesMap: map[string]*schema.Resource{
-			"bitbucket_group": GroupResource(),
+			"bitbucket_group": resources.GroupResource(),
 		},
 		ConfigureFunc: providerConfigure,
 	}
@@ -60,19 +62,9 @@ func providerSchema() map[string]*schema.Schema {
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	username := d.Get("username").(string)
 	password := d.Get("password").(string)
-	client := NewClient(username, password)
-	return &client, nil
+	client := bitbucket.New(&bitbucket.BasicAuth{
+		Username: username,
+		Password: password,
+	})
+	return client, nil
 }
-
-//
-// // The methods defined below will get called for each resource that needs to
-// // get created (createFunc), read (readFunc), updated (updateFunc) and deleted (deleteFunc).
-// // For example, if 10 resources need to be created then `createFunc`
-// // will get called 10 times every time with the information for the proper
-// // resource that is being mapped.
-// //
-// // If at some point any of these functions returns an error, Terraform will
-// // imply that something went wrong with the modification of the resource and it
-// // will prevent the execution of further calls that depend on that resource
-// // that failed to be created/updated/deleted.
-//
