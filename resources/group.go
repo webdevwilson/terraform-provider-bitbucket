@@ -2,6 +2,7 @@ package resources
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/webdevwilson/go-bitbucket/bitbucket"
@@ -60,10 +61,9 @@ func GroupResource() *schema.Resource {
 }
 
 func createFunc(d *schema.ResourceData, meta interface{}) error {
-	bitbucket := meta.(*bitbucket.Client)
-
-	if bitbucket == nil {
-		return errors.New("bitbucket client not found")
+	bitbucket, err := bitbucketClient(meta)
+	if err != nil {
+		return err
 	}
 
 	// get the owner
@@ -85,25 +85,23 @@ func createFunc(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	d.SetId(group.ResourceURI)
-	d.Set("resource_uri", group.ResourceURI)
+	// set computed values
+	d.SetId(fmt.Sprintf("%s/%s", group.Owner.Username, group.Slug))
+	d.Set("auto_add", group.AutoAdd)
+	d.Set("email_forwarding_disabled", group.EmailForwardingDisabled)
+	d.Set("name", group.Name)
 	d.Set("slug", group.Slug)
+	d.Set("owner", group.Owner.Username)
+	d.Set("permission", group.Permission)
+	d.Set("resource_uri", group.ResourceURI)
 
-	// now update with the rest of the values
-	// group.AutoAdd = d.Get("auto_add").(bool)
-	// group.EmailForwardingDisabled = d.Get("email_forwarding_disabled").(bool)
-	// group.Permission = d.Get("permission").(string)
-	//
-	// bitbucket.Groups.Update(owner, name)
-
-	return readFunc(d, meta)
+	return nil
 }
 
 func readFunc(d *schema.ResourceData, meta interface{}) error {
-	bitbucket := meta.(*bitbucket.Client)
-
-	if bitbucket == nil {
-		return errors.New("bitbucket client not found")
+	bitbucket, err := bitbucketClient(meta)
+	if err != nil {
+		return err
 	}
 
 	owner, err := getOwner(d, meta)
@@ -135,14 +133,18 @@ func readFunc(d *schema.ResourceData, meta interface{}) error {
 }
 
 func updateFunc(d *schema.ResourceData, meta interface{}) error {
+	_, err := bitbucketClient(meta)
+	if err != nil {
+		return err
+	}
+
 	return errors.New("updateFunc called")
 }
 
 func deleteFunc(d *schema.ResourceData, meta interface{}) error {
-	bitbucket := meta.(*bitbucket.Client)
-
-	if bitbucket == nil {
-		return errors.New("bitbucket client not found")
+	bitbucket, err := bitbucketClient(meta)
+	if err != nil {
+		return err
 	}
 
 	owner, err := getOwner(d, meta)
@@ -152,6 +154,14 @@ func deleteFunc(d *schema.ResourceData, meta interface{}) error {
 	slug := d.Get("slug").(string)
 
 	return bitbucket.Groups.Delete(owner, slug)
+}
+
+func bitbucketClient(meta interface{}) (*bitbucket.Client, error) {
+	client := meta.(*bitbucket.Client)
+	if client == nil {
+		return nil, errors.New("bitbucket client not found")
+	}
+	return client, nil
 }
 
 func getOwner(d *schema.ResourceData, meta interface{}) (string, error) {
