@@ -50,6 +50,11 @@ func GroupResource() *schema.Resource {
 				Computed:    true,
 				Description: "The uri path to the group",
 			},
+			"slug": &schema.Schema{
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The url slug for the group",
+			},
 		},
 	}
 }
@@ -63,6 +68,9 @@ func createFunc(d *schema.ResourceData, meta interface{}) error {
 
 	// get the owner
 	owner := d.Get("owner").(string)
+	name := d.Get("name").(string)
+
+	// if the owner is self, use the current owner
 	if owner == "self" {
 		current, err := bitbucket.Users.Current()
 		if err != nil {
@@ -71,15 +79,15 @@ func createFunc(d *schema.ResourceData, meta interface{}) error {
 		owner = current.User.Username
 	}
 
-	name := d.Get("name").(string)
-
-	bitbucket.Groups.Create(owner, name)
-
 	// make the API call
-	_, err := bitbucket.Groups.Create(owner, name)
+	group, err := bitbucket.Groups.Create(owner, name)
 	if err != nil {
 		return err
 	}
+
+	d.SetId(group.ResourceURI)
+	d.Set("resource_uri", group.ResourceURI)
+	d.Set("slug", group.Slug)
 
 	// now update with the rest of the values
 	// group.AutoAdd = d.Get("auto_add").(bool)
@@ -88,17 +96,73 @@ func createFunc(d *schema.ResourceData, meta interface{}) error {
 	//
 	// bitbucket.Groups.Update(owner, name)
 
-	return nil
+	return readFunc(d, meta)
 }
 
 func readFunc(d *schema.ResourceData, meta interface{}) error {
+	bitbucket := meta.(*bitbucket.Client)
+
+	if bitbucket == nil {
+		return errors.New("bitbucket client not found")
+	}
+
+	owner, err := getOwner(d, meta)
+	if err != nil {
+		d.SetId("")
+		return err
+	}
+
+	slug := d.Get("slug").(string)
+
+	group, err := bitbucket.Groups.Find(owner, slug)
+	if err != nil {
+		return err
+	}
+
+	if group == nil {
+		return errors.New("Error reading group")
+	}
+
+	d.Set("auto_add", group.AutoAdd)
+	d.Set("email_forwarding_disabled", group.EmailForwardingDisabled)
+	d.Set("name", group.Name)
+	d.Set("slug", group.Slug)
+	d.Set("owner", group.Owner.Username)
+	d.Set("permission", group.Permission)
+	d.Set("resource_uri", group.ResourceURI)
+
 	return nil
 }
 
 func updateFunc(d *schema.ResourceData, meta interface{}) error {
-	return nil
+	return errors.New("updateFunc called")
 }
 
 func deleteFunc(d *schema.ResourceData, meta interface{}) error {
-	return nil
+	bitbucket := meta.(*bitbucket.Client)
+
+	if bitbucket == nil {
+		return errors.New("bitbucket client not found")
+	}
+
+	owner, err := getOwner(d, meta)
+	if err != nil {
+		return err
+	}
+	slug := d.Get("slug").(string)
+
+	return bitbucket.Groups.Delete(owner, slug)
+}
+
+func getOwner(d *schema.ResourceData, meta interface{}) (string, error) {
+	bitbucket := meta.(*bitbucket.Client)
+	owner := d.Get("owner").(string)
+	if owner == "self" {
+		current, err := bitbucket.Users.Current()
+		if err != nil {
+			return "", err
+		}
+		owner = current.User.Username
+	}
+	return owner, nil
 }
