@@ -11,10 +11,15 @@ provider "bitbucket" {
 # the minimum we need to create a group
 resource "bitbucket_group" "minimal" {
   name                      = "tf_provider_readonly"
-  owner                     = "self"
+  owner                     = "${var.username}"
   permission                = "read"
   auto_add                  = false
   email_forwarding_disabled = false
+}
 
-  /*members = ["${var.username}"]*/
+# this will add the calling user to the group
+resource "bitbucket_group_membership" "minimal_member" {
+  name          = "${bitbucket_group.minimal.name}"
+  owner         = "${bitbucket_group.minimal.owner}"
+  email_address = "${var.username}"
 }

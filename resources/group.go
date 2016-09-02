@@ -24,8 +24,7 @@ func GroupResource() *schema.Resource {
 			},
 			"owner": &schema.Schema{
 				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "self",
+				Required:    true,
 				Description: "what account owns this group? default: self",
 			},
 			"permission": &schema.Schema{
@@ -70,15 +69,6 @@ func createFunc(d *schema.ResourceData, meta interface{}) error {
 	owner := d.Get("owner").(string)
 	name := d.Get("name").(string)
 
-	// if the owner is self, use the current owner
-	if owner == "self" {
-		current, err := bitbucket.Users.Current()
-		if err != nil {
-			return err
-		}
-		owner = current.User.Username
-	}
-
 	// make the API call
 	group, err := bitbucket.Groups.Create(owner, name)
 	if err != nil {
@@ -93,7 +83,6 @@ func createFunc(d *schema.ResourceData, meta interface{}) error {
 	d.Set("slug", group.Slug)
 	d.Set("owner", group.Owner.Username)
 	d.Set("permission", group.Permission)
-	d.Set("resource_uri", group.ResourceURI)
 
 	return nil
 }
@@ -124,10 +113,9 @@ func readFunc(d *schema.ResourceData, meta interface{}) error {
 	d.Set("auto_add", group.AutoAdd)
 	d.Set("email_forwarding_disabled", group.EmailForwardingDisabled)
 	d.Set("name", group.Name)
-	d.Set("slug", group.Slug)
 	d.Set("owner", group.Owner.Username)
+	d.Set("slug", group.Slug)
 	d.Set("permission", group.Permission)
-	d.Set("resource_uri", group.ResourceURI)
 
 	return nil
 }
@@ -174,5 +162,19 @@ func getOwner(d *schema.ResourceData, meta interface{}) (string, error) {
 		}
 		owner = current.User.Username
 	}
+	return owner, nil
+}
+
+func readOwner(bitbucket *bitbucket.Client, desired string, owner string) (string, error) {
+	current, err := bitbucket.Users.Current()
+	if err == nil {
+		return "", err
+	}
+	currentUser := current.User.Username
+
+	if desired == "self" && owner == currentUser {
+		return desired, nil
+	}
+
 	return owner, nil
 }
