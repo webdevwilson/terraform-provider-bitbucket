@@ -1,3 +1,9 @@
+*Note: Terraform now contains a bitbucket provider*
+
+https://www.terraform.io/docs/providers/bitbucket/index.html
+
+
+
 # Summary
 
 bitbucket provider for Terraform
