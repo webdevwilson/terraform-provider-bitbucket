@@ -3,6 +3,7 @@ package resources
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/webdevwilson/go-bitbucket/bitbucket"
@@ -45,11 +46,6 @@ func GroupResource() *schema.Resource {
 				Default:     false,
 				Description: "Should all new users be added to this group?",
 			},
-			"resource_uri": &schema.Schema{
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "The uri path to the group",
-			},
 			"slug": &schema.Schema{
 				Type:        schema.TypeString,
 				Computed:    true,
@@ -69,7 +65,16 @@ func createFunc(d *schema.ResourceData, meta interface{}) error {
 	owner := d.Get("owner").(string)
 	name := d.Get("name").(string)
 
-	// make the API call
+	// if the owner is self, use the current owner
+	if owner == "self" {
+		current, err := bitbucket.Users.Current()
+		if err != nil {
+			return err
+		}
+		owner = current.User.Username
+	}
+
+	// make the API call to create
 	group, err := bitbucket.Groups.Create(owner, name)
 	if err != nil {
 		return err
@@ -77,14 +82,14 @@ func createFunc(d *schema.ResourceData, meta interface{}) error {
 
 	// set computed values
 	d.SetId(fmt.Sprintf("%s/%s", group.Owner.Username, group.Slug))
-	d.Set("auto_add", group.AutoAdd)
-	d.Set("email_forwarding_disabled", group.EmailForwardingDisabled)
-	d.Set("name", group.Name)
 	d.Set("slug", group.Slug)
 	d.Set("owner", group.Owner.Username)
 	d.Set("permission", group.Permission)
 
-	return nil
+	// update the group
+	updateFunc(d, meta)
+
+	return readFunc(d, meta)
 }
 
 func readFunc(d *schema.ResourceData, meta interface{}) error {
@@ -101,7 +106,7 @@ func readFunc(d *schema.ResourceData, meta interface{}) error {
 
 	slug := d.Get("slug").(string)
 
-	group, err := bitbucket.Groups.Find(owner, slug)
+	group, err := bitbucket.Groups.Get(owner, slug)
 	if err != nil {
 		return err
 	}
@@ -121,12 +126,23 @@ func readFunc(d *schema.ResourceData, meta interface{}) error {
 }
 
 func updateFunc(d *schema.ResourceData, meta interface{}) error {
-	_, err := bitbucketClient(meta)
+	bitbucket, err := bitbucketClient(meta)
 	if err != nil {
 		return err
 	}
 
-	return errors.New("updateFunc called")
+	parts := strings.Split(d.Id(), "/")
+	group, err := bitbucket.Groups.Get(parts[0], parts[1])
+	if err != nil {
+		return err
+	}
+
+	group.AutoAdd = d.Get("auto_add").(bool)
+	group.EmailForwardingDisabled = d.Get("email_forwarding_disabled").(bool)
+	group.Permission = d.Get("permission").(string)
+
+	_, err = bitbucket.Groups.Update(group)
+	return err
 }
 
 func deleteFunc(d *schema.ResourceData, meta interface{}) error {
